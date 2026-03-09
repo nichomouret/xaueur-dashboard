@@ -545,51 +545,40 @@ function setMode(m){
   if(price>0){updateTradeSetup();updateSignal();}
 }
 
-// ── PRIX — 4 sources en cascade (Chrome desktop) ──
+// ── PRIX — via Claude API comme proxy (contourne CORS) ──
 let priceHistory = [];
 
 async function fetchPrice(){
   document.getElementById('apiDot').className='api-dot loading';
   document.getElementById('apiStatus').textContent='Connexion...';
 
-  // SOURCE 1 : TwelveData /price (ta clé, 1 call gratuit)
   try {
-    const r = await fetch(`https://api.twelvedata.com/price?symbol=XAU/EUR&apikey=${TD_KEY}`,{signal:AbortSignal.timeout(6000)});
-    const d = await r.json();
-    const p = parseFloat(d?.price);
-    if(p > 1000) return applyPrice(p,'TwelveData ✓');
-  } catch(e){}
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 256,
+        tools: [{type:'web_search_20250305', name:'web_search'}],
+        messages: [{
+          role: 'user',
+          content: `Fetch the current XAU/EUR spot price using web search. Return ONLY a JSON object like this, nothing else: {"price": 4401.50, "source": "source name"}`
+        }]
+      })
+    });
+    const data = await res.json();
+    // Extraire le texte de la réponse
+    const txt = data.content?.filter(b => b.type === 'text').map(b => b.text).join('');
+    const match = txt?.match(/\{[^}]*"price"\s*:\s*([\d.]+)[^}]*\}/);
+    if(match) {
+      const p = parseFloat(match[1]);
+      if(p > 1000) return applyPrice(p, 'Claude Search ✓');
+    }
+  } catch(e){ console.log('Claude proxy failed:', e); }
 
-  // SOURCE 2 : metals.live (XAU/USD) × frankfurter (USD→EUR)
-  try {
-    const [mR,fR] = await Promise.all([
-      fetch('https://api.metals.live/v1/spot/gold',{signal:AbortSignal.timeout(5000)}).then(r=>r.json()),
-      fetch('https://api.frankfurter.app/latest?from=USD&to=EUR',{signal:AbortSignal.timeout(5000)}).then(r=>r.json())
-    ]);
-    const xauUsd = mR?.[0]?.price || mR?.price;
-    const eurRate = fR?.rates?.EUR;
-    if(xauUsd && eurRate && xauUsd > 100) return applyPrice(xauUsd * eurRate,'Metals.live ✓');
-  } catch(e){}
-
-  // SOURCE 3 : goldprice.org direct EUR
-  try {
-    const r = await fetch('https://data-asg.goldprice.org/dbXRates/EUR',{signal:AbortSignal.timeout(5000)});
-    const d = await r.json();
-    const p = parseFloat(d?.items?.[0]?.xauPrice);
-    if(p > 1000) return applyPrice(p,'GoldPrice.org ✓');
-  } catch(e){}
-
-  // SOURCE 4 : jsdelivr currency-api
-  try {
-    const r = await fetch('https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies/xau/eur.json',{signal:AbortSignal.timeout(5000)});
-    const d = await r.json();
-    const p = parseFloat(d?.eur);
-    if(p > 1000) return applyPrice(p,'Currency API ✓');
-  } catch(e){}
-
-  // FALLBACK
+  // FALLBACK simulation
   document.getElementById('apiDot').className='api-dot err';
-  document.getElementById('apiStatus').textContent='⚠️ Ouvrir dans Chrome';
+  document.getElementById('apiStatus').textContent='Mode démo';
   simPrice();
 }
 
@@ -615,7 +604,7 @@ function buildHistory(p){
 }
 
 function simPrice(){
-  if(!price) price=4444;
+  if(!price) price=4401;
   prevPrice=price;
   price+=(Math.random()-0.47)*3;
   buildHistory(price);
