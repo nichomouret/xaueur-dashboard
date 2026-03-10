@@ -112,6 +112,17 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .bias-badge.volatile{background:rgba(255,145,0,0.12);color:var(--warn);}
 .nec-note{font-size:0.75rem;color:var(--text2);margin-top:5px;line-height:1.5;}
 .nec-cons{font-family:'Share Tech Mono';font-size:0.73rem;color:var(--text2);margin-top:4px;}
+.nec-expand-btn{margin-top:8px;background:rgba(240,180,41,0.08);border:1px solid rgba(240,180,41,0.25);color:var(--gold);font-family:'Share Tech Mono';font-size:0.65rem;padding:4px 10px;border-radius:4px;cursor:pointer;letter-spacing:1px;transition:all 0.2s;}
+.nec-expand-btn:hover{background:rgba(240,180,41,0.15);}
+.nec-detail{display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px;}
+.nec-detail.open{display:block;}
+.nec-detail-row{font-size:0.73rem;margin-bottom:4px;color:var(--text2);line-height:1.5;}
+.nec-detail-row strong{color:var(--text);font-weight:600;}
+.scenario-box{margin-top:8px;display:flex;flex-direction:column;gap:4px;}
+.sc-row{font-size:0.72rem;padding:5px 9px;border-radius:4px;line-height:1.5;}
+.sc-row.up{background:rgba(255,23,68,0.08);border-left:3px solid var(--sell);color:#ff8a9b;}
+.sc-row.in{background:rgba(144,164,174,0.08);border-left:3px solid var(--neutral);color:var(--text2);}
+.sc-row.down{background:rgba(0,230,118,0.08);border-left:3px solid var(--buy);color:#80ffb3;}
 .res-item{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-radius:5px;background:var(--bg3);margin-bottom:4px;border:1px solid var(--border);}
 .ri-nm{font-size:0.78rem;color:var(--text2);}
 .ri-r{display:flex;align-items:center;gap:7px;}
@@ -401,17 +412,17 @@ const TD='https://api.twelvedata.com';
 
 // ── CALENDRIER MACRO ──
 const CAL=[
-  {n:"CPI US Février",d:"2026-03-12T14:30",imp:3,bias:"volatile",note:"Inflation haute→or baissier (Fed hawkish). Inflation basse→or haussier fort.",cons:"Prév. +3.0% YoY",res:null},
-  {n:"FOMC Minutes",d:"2026-03-18T20:00",imp:3,bias:"volatile",note:"Ton hawkish→baissier or. Ton dovish→haussier or.",cons:"Analyse ton Fed",res:null},
-  {n:"Décision Fed (FOMC)",d:"2026-03-19T20:00",imp:3,bias:"volatile",note:"Maintien prévu. Surprise hawkish→or en forte baisse.",cons:"Maintien 4.25-4.50%",res:null},
-  {n:"Conférence Powell",d:"2026-03-19T20:30",imp:3,bias:"volatile",note:"Chaque mot compte. Mention baisse taux→or haussier.",cons:"Post-FOMC",res:null},
-  {n:"PMI Flash US Mars",d:"2026-03-23T14:45",imp:2,bias:"bearish",note:"PMI fort→dollar fort→pression sur l'or.",cons:"Prév. 52.0",res:null},
-  {n:"PCE Core Février",d:"2026-03-27T14:30",imp:3,bias:"volatile",note:"Indicateur inflation favori Fed. Au-dessus prévision→or baissier.",cons:"Prév. +2.6% YoY",res:null},
-  {n:"NFP Mars 2026",d:"2026-04-03T14:30",imp:3,bias:"volatile",note:"Emplois forts→dollar fort→or baissier. Faibles→or haussier fort.",cons:"Prév. +130K",res:null},
-  {n:"CPI US Mars",d:"2026-04-10T14:30",imp:3,bias:"volatile",note:"Inflation core déterminante pour Fed en 2026.",cons:"À confirmer",res:null},
-  {n:"Décision BCE",d:"2026-04-17T14:15",imp:2,bias:"bullish",note:"BCE dovish→EUR faible→XAU/EUR haussier (attention: impacte le dénominateur).",cons:"Possible baisse 25bp",res:null},
-  {n:"NFP Avril 2026",d:"2026-05-01T14:30",imp:3,bias:"volatile",note:"Impact maximal. Positionnement avant = très risqué.",cons:"À confirmer",res:null},
-  {n:"FOMC Mai 2026",d:"2026-05-07T20:00",imp:3,bias:"volatile",note:"Possible 1ère baisse taux 2026→très haussier pour l'or.",cons:"Possible -25bp",res:null},
+  {n:"CPI US Février",d:"2026-03-12T14:30",imp:3,bias:"volatile",note:"Inflation haute→or baissier (Fed hawkish). Inflation basse→or haussier fort.",cons:"Prév. +3.0% YoY",res:null,detail:{consensus:"Consensus : +3.0% YoY (core +3.2%)",range:"Fourchette analysts : bas 2.7% — haut 3.4%",prev:"Précédent : +3.0% (jan. 2026)",s_up:"📉 > 3.2% : Fed hawkish confirmée → OR baissier fort -20/40 pts",s_in:"➡️ 2.8-3.2% : conforme → réaction limitée ±10 pts, direction technique",s_down:"📈 < 2.8% : désinflation, espoirs baisse taux → OR haussier fort +30/60 pts"}},
+  {n:"FOMC Minutes",d:"2026-03-18T20:00",imp:3,bias:"volatile",note:"Ton hawkish→baissier or. Ton dovish→haussier or.",cons:"Analyse ton Fed",res:null,detail:{consensus:"Minutes réunion 28-29 jan. — focus inflation et trajectoire taux",range:"Pas de chiffre — lecture qualitative du ton Fed",prev:"Dernières minutes : inquiétudes inflation, patience affichée",s_up:"📉 Ton hawkish (délai baisses) → dollar fort → OR baissier -15/30 pts",s_in:"➡️ Ton neutre équilibré → peu de réaction, attente FOMC 19/03",s_down:"📈 Ton dovish (baisse prochaine) → OR haussier fort +25/50 pts"}},
+  {n:"Décision Fed (FOMC)",d:"2026-03-19T20:00",imp:3,bias:"volatile",note:"Maintien prévu. Surprise hawkish→or en forte baisse.",cons:"Maintien 4.25-4.50%",res:null,detail:{consensus:"Consensus : maintien 4.25-4.50% (probabilité ~95%)",range:"99% maintien — baisse non envisagée, hausse < 1%",prev:"Précédent : maintien jan. 2026 (2ème consécutif)",s_up:"📉 Hausse surprise ou dot plot hawkish → OR baissier violent -40/80 pts",s_in:"➡️ Maintien + discours neutre → réaction limitée ±15 pts",s_down:"📈 Maintien + signal baisse prochaine réunion → OR haussier +30/60 pts"}},
+  {n:"Conférence Powell",d:"2026-03-19T20:30",imp:3,bias:"volatile",note:"Chaque mot compte. Mention baisse taux→or haussier.",cons:"Post-FOMC",res:null,detail:{consensus:"Focus : inflation, emploi, calendrier baisses 2026",range:"Durée ~45min — volatilité max sur chaque phrase clé",prev:"Jan. 2026 : ton patient, pas pressé de baisser",s_up:"📉 Ton hawkish, insiste sur inflation → OR baissier -20/40 pts supp.",s_in:"➡️ Discours équilibré → consolidation post-FOMC",s_down:"📈 Mentionne données encourageantes, ouvre porte juin → OR +30/50 pts"}},
+  {n:"PMI Flash US Mars",d:"2026-03-23T14:45",imp:2,bias:"bearish",note:"PMI fort→dollar fort→pression sur l'or.",cons:"Prév. 52.0",res:null,detail:{consensus:"PMI Composite prév. 52.0 (services 53.0, manu 51.5)",range:"Fourchette : 49.5 — 54.0",prev:"Précédent : 51.6 (fév. 2026)",s_up:"📉 > 53.5 : économie robuste → dollar fort → OR -10/20 pts",s_in:"➡️ 50.5-53.0 : conforme → réaction faible",s_down:"📈 < 50 (contraction) : risque récession → OR valeur refuge +15/30 pts"}},
+  {n:"PCE Core Février",d:"2026-03-27T14:30",imp:3,bias:"volatile",note:"Indicateur inflation favori Fed. Au-dessus prévision→or baissier.",cons:"Prév. +2.6% YoY",res:null,detail:{consensus:"PCE Core prév. +2.6% YoY / +0.3% MoM",range:"Fourchette : +2.4% — +2.9% YoY",prev:"Précédent : +2.6% YoY (jan. 2026)",s_up:"📉 > 2.8% : inflation tenace → Fed immobile longtemps → OR -20/35 pts",s_in:"➡️ +2.5-2.7% : conforme → réaction modérée ±10 pts",s_down:"📈 < 2.4% : désinflation accélère → baisses proches → OR +25/45 pts"}},
+  {n:"NFP Mars 2026",d:"2026-04-03T14:30",imp:3,bias:"volatile",note:"Emplois forts→dollar fort→or baissier. Faibles→or haussier fort.",cons:"Prév. +130K",res:null,detail:{consensus:"NFP +130K / Chômage 4.2% / Salaires +3.8% YoY",range:"Fourchette NFP : +80K — +190K",prev:"Précédent : +151K (fév. 2026) — ralentissement modéré",s_up:"📉 > +180K + salaires élevés → Fed patiente → OR -25/50 pts",s_in:"➡️ +100K-+160K + chômage stable → réaction limitée ±15 pts",s_down:"📈 < +80K ou chômage > 4.5% → récession fears → OR +40/70 pts"}},
+  {n:"CPI US Mars",d:"2026-04-10T14:30",imp:3,bias:"volatile",note:"Inflation core déterminante pour Fed en 2026.",cons:"À confirmer",res:null,detail:{consensus:"Consensus à paraître — référence : CPI fév. +3.0% YoY",range:"À confirmer selon tendance mars",prev:"Précédent : +3.0% YoY (fév. 2026)",s_up:"📉 Surprise haussière → Fed hawkish prolongée → OR baissier fort",s_in:"➡️ Conforme → réaction technique limitée",s_down:"📈 Surprise baissière → baisses taux mai/juin → OR haussier fort"}},
+  {n:"Décision BCE",d:"2026-04-17T14:15",imp:2,bias:"bullish",note:"BCE dovish→EUR faible→XAU/EUR haussier (attention: impacte le dénominateur).",cons:"Possible baisse 25bp",res:null,detail:{consensus:"Baisse 25bp prévue → taux depot 2.25% (4ème baisse consécutive)",range:"Probabilité baisse : ~70% / Pause : ~30%",prev:"Précédent : baisse 25bp jan. 2026 — cycle baissier en cours",s_up:"📈 Baisse 25bp : EUR s'affaiblit → XAU/EUR haussier +15/30 pts",s_in:"➡️ Pause surprise → EUR se raffermit → XAU/EUR sous pression -10/20 pts",s_down:"📈 Baisse 50bp surprise → EUR en forte baisse → XAU/EUR +30/50 pts"}},
+  {n:"NFP Avril 2026",d:"2026-05-01T14:30",imp:3,bias:"volatile",note:"Impact maximal. Positionnement avant = très risqué.",cons:"À confirmer",res:null,detail:{consensus:"Consensus à paraître — clé avant FOMC mai",range:"À confirmer",prev:"Référence : NFP mars 2026",s_up:"📉 Emplois forts → Fed immobile → OR baissier",s_in:"➡️ Conforme → réaction selon contexte macro global",s_down:"📈 Emplois faibles → récession fears → OR haussier fort"}},
+  {n:"FOMC Mai 2026",d:"2026-05-07T20:00",imp:3,bias:"volatile",note:"Possible 1ère baisse taux 2026→très haussier pour l'or.",cons:"Possible -25bp",res:null,detail:{consensus:"Probabilité baisse 25bp : ~45% / Maintien : ~55%",range:"Décision conditionnelle à CPI mars/avril et NFP",prev:"Maintien jan. + mars 2026",s_up:"📈 Baisse 25bp : 1ère baisse 2026 → OR haussier très fort +50/100 pts",s_in:"➡️ Maintien + signal clair juin → OR haussier modéré +20/40 pts",s_down:"📉 Maintien + ton hawkish surprenant → OR baissier -30/60 pts"}},
 ];
 
 function renderCal(){
@@ -448,6 +459,18 @@ function renderCal(){
       <div class="bias-row"><span class="bias-label">Impact or attendu :</span><span class="bias-badge ${next.bias}">${biasMap[next.bias]}</span></div>
       <div class="nec-cons">${next.cons}</div>
       <div class="nec-note">${next.note}</div>
+      ${next.detail ? `
+      <button class="nec-expand-btn" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ MOINS DE DÉTAILS':'▼ CONSENSUS & SCÉNARIOS OR'">▼ CONSENSUS & SCÉNARIOS OR</button>
+      <div class="nec-detail">
+        <div class="nec-detail-row"><strong>📊 ${next.detail.consensus}</strong></div>
+        <div class="nec-detail-row">📏 ${next.detail.range}</div>
+        <div class="nec-detail-row">🕐 ${next.detail.prev}</div>
+        <div class="scenario-box">
+          <div class="sc-row up">${next.detail.s_up}</div>
+          <div class="sc-row in">${next.detail.s_in}</div>
+          <div class="sc-row down">${next.detail.s_down}</div>
+        </div>
+      </div>` : ''}
     </div>`;
   } else {
     nextEl.innerHTML='<div class="panel-empty">Aucun événement majeur dans les 30 jours</div>';
