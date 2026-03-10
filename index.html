@@ -547,34 +547,18 @@ function setMode(m){
 
 // ── PRIX — via Claude API comme proxy (contourne CORS) ──
 let priceHistory = [];
+const PROXY_URL = 'https://xaueur-proxy-production.up.railway.app';
 
 async function fetchPrice(){
   document.getElementById('apiDot').className='api-dot loading';
   document.getElementById('apiStatus').textContent='Connexion...';
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 256,
-        tools: [{type:'web_search_20250305', name:'web_search'}],
-        messages: [{
-          role: 'user',
-          content: `Fetch the current XAU/EUR spot price using web search. Return ONLY a JSON object like this, nothing else: {"price": 4401.50, "source": "source name"}`
-        }]
-      })
-    });
-    const data = await res.json();
-    // Extraire le texte de la réponse
-    const txt = data.content?.filter(b => b.type === 'text').map(b => b.text).join('');
-    const match = txt?.match(/\{[^}]*"price"\s*:\s*([\d.]+)[^}]*\}/);
-    if(match) {
-      const p = parseFloat(match[1]);
-      if(p > 1000) return applyPrice(p, 'Claude Search ✓');
-    }
-  } catch(e){ console.log('Claude proxy failed:', e); }
+    const res = await fetch(`${PROXY_URL}/price`, {signal: AbortSignal.timeout(8000)});
+    const d = await res.json();
+    const p = parseFloat(d?.price);
+    if(p > 1000) return applyPrice(p, d.source || 'Railway ✓');
+  } catch(e){ console.log('Railway proxy error:', e.message); }
 
   // FALLBACK simulation
   document.getElementById('apiDot').className='api-dot err';
