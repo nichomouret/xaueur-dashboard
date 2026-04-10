@@ -542,6 +542,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 <script>
 // ── CONFIG ──
 const PROXY = 'https://xaueur-proxy-production.up.railway.app';
+var TWELVEDATA_KEY = '10b3ff3aa4b444ae85d350902c523b0f';
 const AV_KEY = 'TQPE9U0FIFDWE8ZY';
 
 // ── STATE ──
@@ -835,63 +836,53 @@ function setMode(m){
 // ── PRIX ──
 let priceHistory=[];
 
-// ── DUKASCOPY JSONP (direct depuis navigateur — pas de CORS) ──
-function fetchDukascopyJSONP(instrument) {
-  return new Promise((resolve, reject) => {
-    const cbName = 'dk_' + instrument.replace('/','') + '_' + Date.now();
-    const ts = Date.now();
-    window[cbName] = function(data) {
-      delete window[cbName];
-      document.head.removeChild(script);
-      if(data && data[0] && data[0][4]) resolve(parseFloat(data[0][4]));
-      else reject(new Error('No data'));
+// ── SSE — prix temps réel via Railway WebSocket bridge ──
+let sseConnection = null;
+let sseActive = false;
+
+function connectSSE() {
+  if(sseActive) return;
+  try {
+    const es = new EventSource(PROXY + '/stream');
+    sseConnection = es;
+    es.onopen = function() {
+      console.log('[SSE] Connected');
+      sseActive = true;
     };
-    const script = document.createElement('script');
-    script.src = `https://freeserv.dukascopy.com/2.0/?path=chart/json&instrument=${encodeURIComponent(instrument)}&offer_side=B&interval=1&time=${ts}&from=0&to=1&jsonp=${cbName}`;
-    script.onerror = () => { delete window[cbName]; reject(new Error('Script error')); };
-    setTimeout(() => { delete window[cbName]; reject(new Error('Timeout')); }, 5000);
-    document.head.appendChild(script);
-  });
+    es.onmessage = function(evt) {
+      try {
+        const d = JSON.parse(evt.data);
+        if(d.price && d.price > 1000) {
+          applyPrice(d.price, 'Live ✓');
+        }
+      } catch(e) {}
+    };
+    es.onerror = function() {
+      console.log('[SSE] Error — fallback to HTTP');
+      sseActive = false;
+      es.close();
+      sseConnection = null;
+      setTimeout(connectSSE, 5000);
+    };
+  } catch(e) {
+    console.log('[SSE] Failed:', e.message);
+  }
 }
 
 async function fetchPrice(){
   document.getElementById('apiDot').className='api-dot loading';
   document.getElementById('apiStatus').textContent='Connexion...';
 
-  // Source 1: Dukascopy direct JSONP depuis navigateur — vrai temps réel
-  try {
-    const [xauUsd, eurUsd] = await Promise.all([
-      fetchDukascopyJSONP('XAU/USD'),
-      fetchDukascopyJSONP('EUR/USD')
-    ]);
-    if(xauUsd > 1000 && eurUsd > 0.5) {
-      const xauEur = xauUsd / eurUsd;
-      console.log(`Dukascopy: XAU/USD=${xauUsd} EUR/USD=${eurUsd} XAU/EUR=${xauEur.toFixed(2)}`);
-      return applyPrice(xauEur, 'Dukascopy ✓');
-    }
-  } catch(e) { console.log('Dukascopy error:', e.message); }
+  // Connect SSE for real-time updates
+  connectSSE();
 
-  // Source 2: Railway proxy (TwelveData)
+  // Always do one HTTP fetch immediately for instant display
   try {
-    const res = await fetch(`${PROXY}/price?t=${Date.now()}`, {signal: AbortSignal.timeout(8000)});
-    const d = await res.json();
-    const p = parseFloat(d?.price);
-    if(p > 1000) return applyPrice(p, 'TwelveData ✓');
-  } catch(e) { console.log('Proxy error:', e.message); }
-
-  // Source 3: TwelveData XAU/USD ÷ EUR/USD via proxy
-  try {
-    const [r1, r2] = await Promise.all([
-      fetch(`${PROXY}/td/quote?symbol=XAU/USD`, {signal: AbortSignal.timeout(5000)}),
-      fetch(`${PROXY}/td/quote?symbol=EUR/USD`, {signal: AbortSignal.timeout(5000)})
-    ]);
-    const d1 = await r1.json();
-    const d2 = await r2.json();
-    if(d1 && d1.close && d2 && d2.close) {
-      const xauEur = parseFloat(d1.close) / parseFloat(d2.close);
-      if(xauEur > 1000) return applyPrice(xauEur, 'XAU/USD÷EUR ✓');
-    }
-  } catch(e) { console.log('Source 3 error:', e.message); }
+    var r = await fetch(PROXY + '/price?t=' + Date.now(), {signal: AbortSignal.timeout(8000)});
+    var d = await r.json();
+    var p = parseFloat(d && d.price);
+    if(p > 1000) return applyPrice(p, sseActive ? 'Live ✓' : 'TwelveData ✓');
+  } catch(e) { console.log('HTTP error:', e.message); }
 
   document.getElementById('apiDot').className='api-dot err';
   document.getElementById('apiStatus').textContent='Mode démo';
@@ -901,16 +892,16 @@ async function fetchPrice(){
 // Store open price for daily % change
 let openPrice = 0;
 
-function applyPrice(p,src){
-  if(!openPrice || openPrice === 0) openPrice = p; // first price = open reference
+function applyPrice(p, src, open){
+  if(open && open > 0) openPrice = open; // use real open from API if available
+  else if(!openPrice || openPrice === 0) openPrice = p;
   if(price > 0) prevPrice = price;
   price = p;
-  const chg = price - (prevPrice||price);
   const dailyChg = price - openPrice;
   const dailyPct = openPrice > 0 ? ((dailyChg/openPrice)*100).toFixed(2) : '0.00';
   updPrice(price, dailyChg, dailyPct);
   buildHistory(price);
-  calcPivots(price*1.0065,price*0.989,openPrice||price*0.9985);
+  calcPivots(price*1.0065, price*0.989, openPrice||price*0.9985);
   document.getElementById('apiDot').className='api-dot ok';
   document.getElementById('apiStatus').textContent=src;
 }
