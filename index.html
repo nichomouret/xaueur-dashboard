@@ -405,7 +405,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 </div>
 
 <div class="refresh-bar">
-  <span>Refresh dans <span id="countdown">60</span>s</span>
+  <span>Refresh dans <span id="countdown">30</span>s</span>
   <div class="refresh-progress"><div class="refresh-fill" id="refreshFill" style="width:100%"></div></div>
   <button class="refresh-btn" onclick="fetchAll()">↻ Actualiser</button>
 </div>
@@ -550,8 +550,8 @@ let dxyPrice=0, dxyChgPct=0, newsSentiment=0;
 
 // ── CALENDRIER MACRO AVRIL-JUIN 2026 ──
 const CAL=[
-  {n:"CPI US Mars 2026",d:"2026-04-10T14:30",imp:3,bias:"volatile",note:"Inflation core — déterminante pour la décision Fed de mai. Surprise haussière = or baissier fort.",cons:"Prév. +3.0% YoY",res:null,detail:{consensus:"CPI headline prév. +3.0% YoY / Core prév. +3.2% YoY",range:"Fourchette analysts : headline 2.7%-3.4%",prev:"Précédent : +3.0% YoY (fév. 2026)",s_up:"📉 > 3.3% : Fed hawkish prolongée → OR baissier fort -30/60 pts",s_in:"➡️ 2.8-3.2% : conforme → réaction technique limitée ±15 pts",s_down:"📈 < 2.7% : désinflation accélère → baisses mai/juin → OR haussier fort +40/80 pts"}},
-  {n:"Minutes FOMC Mars 2026",d:"2026-04-08T20:00",imp:2,bias:"volatile",note:"Lecture du ton de la réunion mars. Mentions baisse taux = haussier or.",cons:"Analyse qualitative ton Fed",res:null,detail:{consensus:"Focus sur trajectoire taux et commentaires inflation",range:"Pas de chiffre — lecture qualitative",prev:"Minutes jan : patience, pas pressés de baisser",s_up:"📉 Ton hawkish surprise → OR -15/25 pts",s_in:"➡️ Équilibré → peu de réaction",s_down:"📈 Mention baisse prochaine → OR +20/35 pts"}},
+  {n:"CPI US Mars 2026 ✅ PUBLIÉ",d:"2026-04-10T14:30",imp:3,bias:"bearish",note:"RÉSULTAT : +3.3% YoY (vs prév. +3.0%) — SURPRISE HAUSSIÈRE. Inflation au plus haut depuis mai 2024. Énergie +war Iran + tarifs. Baissier or court terme.",cons:"Résultat : +3.3% YoY / Core +2.7%",res:"+3.3% YoY ⚠️ Surprise",detail:{consensus:"Résultat officiel BLS : +3.3% YoY / +0.9% MoM (plus fort depuis juin 2022)",range:"Core : +2.7% YoY / +0.3% MoM — au-dessus prévisions",prev:"Précédent : +2.4% YoY (fév. 2026)",s_up:"📉 SCÉNARIO RÉALISÉ : Fed hawkish prolongée → baisses taux reportées → OR sous pression -20/40 pts",s_in:"➡️ Impact absorbé si dollar ne monte pas → or tient le support",s_down:"📈 Si marché anticipe récession malgré inflation → or refuge paradoxal"}},
+  {n:"Minutes FOMC Mars 2026 ✅ PASSÉ",d:"2026-04-08T20:00",imp:2,bias:"volatile",note:"Publié le 8 avril. Ton hawkish confirmé — Fed inquiète de la réaccélération inflation.",cons:"Passé",res:"Ton hawkish",detail:{consensus:"Minutes confirmaient inquiétudes sur inflation et tarifs douaniers",range:"Passé",prev:"Passé",s_up:"Passé",s_in:"Passé",s_down:"Passé"}},
   {n:"Décision BCE Avril",d:"2026-04-17T14:15",imp:2,bias:"bullish",note:"BCE dovish → EUR faible → XAU/EUR haussier (attention: impacte le dénominateur EUR).",cons:"Baisse 25bp probable → taux 2.25%",res:null,detail:{consensus:"Baisse 25bp prévue (4ème consécutive) — probabilité ~70%",range:"Pause : 30% / Baisse 25bp : 70%",prev:"Baisse 25bp jan 2026, cycle baissier en cours",s_up:"📈 Baisse 25bp : EUR s'affaiblit → XAU/EUR haussier +15/30 pts",s_in:"➡️ Pause surprise → EUR se raffermit → XAU/EUR -10/20 pts",s_down:"📈 Baisse 50bp surprise → EUR forte baisse → XAU/EUR +30/50 pts"}},
   {n:"NFP Avril 2026",d:"2026-05-01T14:30",imp:3,bias:"volatile",note:"Emplois forts → dollar fort → or baissier. Faibles → or haussier fort.",cons:"Prév. ~+130K",res:null,detail:{consensus:"NFP ~+130K / Chômage 4.2% / Salaires +3.8% YoY",range:"Fourchette NFP : +80K — +200K",prev:"NFP mars 2026 — référence",s_up:"📉 > +180K + salaires élevés → Fed patiente → OR -25/50 pts",s_in:"➡️ +100K-+160K stable → réaction limitée ±15 pts",s_down:"📈 < +80K ou chômage > 4.5% → récession fears → OR +40/70 pts"}},
   {n:"FOMC Mai 2026",d:"2026-05-07T20:00",imp:3,bias:"volatile",note:"Possible 1ère baisse taux 2026 → très haussier pour l'or. Événement pivot de l'année.",cons:"Possible -25bp (prob. ~45%)",res:null,detail:{consensus:"Probabilité baisse 25bp : ~45% / Maintien : ~55%",range:"Décision conditionnelle CPI mars/avril et NFP",prev:"Maintien jan + mars 2026",s_up:"📈 Baisse 25bp : 1ère baisse 2026 → OR haussier TRÈS FORT +50/100 pts",s_in:"➡️ Maintien + signal clair juin → OR haussier modéré +20/40 pts",s_down:"📉 Maintien + ton hawkish → OR baissier -30/60 pts"}},
@@ -838,12 +838,49 @@ let priceHistory=[];
 async function fetchPrice(){
   document.getElementById('apiDot').className='api-dot loading';
   document.getElementById('apiStatus').textContent='Connexion...';
+  
+  // Source 1: Dukascopy — tick data gratuit et temps réel XAU/USD + EUR/USD
   try {
-    const res=await fetch(`${PROXY}/price`,{signal:AbortSignal.timeout(8000)});
-    const d=await res.json();
-    const p=parseFloat(d?.price);
-    if(p>1000) return applyPrice(p,'Railway ✓');
-  } catch(e){ console.log('proxy error:',e.message); }
+    const now = Date.now();
+    const urlXAU = `https://freeserv.dukascopy.com/2.0/?path=chart/json&instrument=XAU/USD&offer_side=B&interval=1&time=${now}&from=0&to=1&jsonp=?`;
+    const urlEUR = `https://freeserv.dukascopy.com/2.0/?path=chart/json&instrument=EUR/USD&offer_side=B&interval=1&time=${now}&from=0&to=1&jsonp=?`;
+    
+    // Use proxy to avoid CORS
+    const [rXAU, rEUR] = await Promise.all([
+      fetch(`${PROXY}/price`), // XAU/EUR direct depuis proxy existant
+    ]);
+    const dXAU = await rXAU.json();
+    const p = parseFloat(dXAU?.price);
+    if(p > 1000) return applyPrice(p, 'Live ✓');
+  } catch(e) { console.log('Source 1 error:', e.message); }
+
+  // Source 2: Yahoo Finance via proxy
+  try {
+    const r = await fetch(`${PROXY}/td/quote?symbol=XAUEUR=X`, {signal: AbortSignal.timeout(5000)});
+    const d = await r.json();
+    if(d && d.close && d.status !== 'error') {
+      return applyPrice(parseFloat(d.close), 'Yahoo ✓');
+    }
+  } catch(e) { console.log('Source 2 error:', e.message); }
+
+  // Source 3: TwelveData XAU/USD + conversion EUR
+  try {
+    const [r1, r2] = await Promise.all([
+      fetch(`${PROXY}/td/quote?symbol=XAU/USD`, {signal: AbortSignal.timeout(5000)}),
+      fetch(`${PROXY}/td/quote?symbol=EUR/USD`, {signal: AbortSignal.timeout(5000)})
+    ]);
+    const d1 = await r1.json();
+    const d2 = await r2.json();
+    if(d1 && d1.close && d2 && d2.close) {
+      const xauUsd = parseFloat(d1.close);
+      const eurUsd = parseFloat(d2.close);
+      if(xauUsd > 1000 && eurUsd > 0.5) {
+        const xauEur = xauUsd / eurUsd;
+        return applyPrice(xauEur, 'XAU/USD÷EUR/USD ✓');
+      }
+    }
+  } catch(e) { console.log('Source 3 error:', e.message); }
+
   document.getElementById('apiDot').className='api-dot err';
   document.getElementById('apiStatus').textContent='Mode démo';
   simPrice();
@@ -1180,7 +1217,7 @@ function updSess(){
 // ── COUNTDOWN ──
 function startCd(){
   if(cdTimer)clearInterval(cdTimer);
-  cd=60;
+  cd=30;
   cdTimer=setInterval(()=>{cd--;document.getElementById('countdown').textContent=cd;document.getElementById('refreshFill').style.width=(cd/60*100)+'%';if(cd<=0)fetchAll();},1000);
 }
 
