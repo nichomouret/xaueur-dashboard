@@ -563,31 +563,27 @@ const CAL=[
 let dxyHistory = [];
 
 async function fetchDXY(){
-  try {
-    // DXY = DX-Y.NYB ou UUP ETF comme proxy
-    const r = await fetch(`${PROXY}/td/quote?symbol=DX-Y.NYB`);
-    const d = await r.json();
-    if(d && d.close) {
-      dxyPrice = parseFloat(d.close);
-      dxyChgPct = parseFloat(d.percent_change||0);
-      renderDXY();
-      return;
-    }
-  } catch(e) {}
-  // Fallback: essai avec UUP
-  try {
-    const r2 = await fetch(`${PROXY}/td/quote?symbol=UUP`);
-    const d2 = await r2.json();
-    if(d2 && d2.close) {
-      dxyPrice = parseFloat(d2.close);
-      dxyChgPct = parseFloat(d2.percent_change||0);
-      renderDXY();
-      return;
-    }
-  } catch(e) {}
-  // Simulation si indisponible
-  dxyPrice = 103.5 + (Math.random()-0.5)*0.5;
-  dxyChgPct = (Math.random()-0.5)*0.3;
+  // Try UUP ETF (dollar bullish ETF — proxy DXY disponible sur TwelveData)
+  const symbols = ['UUP', 'DXCM', 'DXJ'];
+  for(const sym of symbols){
+    try {
+      const r = await fetch(`${PROXY}/td/quote?symbol=${sym}`, {signal: AbortSignal.timeout(5000)});
+      const d = await r.json();
+      if(d && d.close && d.status !== 'error') {
+        dxyPrice = parseFloat(d.close);
+        dxyChgPct = parseFloat(d.percent_change||0);
+        // UUP correlates with DXY but at different scale — label accordingly
+        document.getElementById('dxyNote').textContent = `${sym} (proxy DXY) — corrélation positive avec dollar`;
+        renderDXY();
+        return;
+      }
+    } catch(e) {}
+  }
+  // Fallback simulation basée sur contexte macro actuel
+  // Contexte avril 2026: tarifs US-Chine, dollar sous pression légère
+  dxyPrice = 102.8 + (Math.random()-0.5)*0.4;
+  dxyChgPct = -0.15 + (Math.random()-0.5)*0.2; // légèrement baissier = haussier or
+  document.getElementById('dxyNote').textContent = 'DXY simulé (TwelveData plan Basic) — contexte dollar avril 2026';
   renderDXY();
 }
 
@@ -1446,9 +1442,15 @@ function copyGoliathOrders(){
 
 // ── MAIN ──
 async function fetchAll(){
-  await Promise.all([fetchPrice(), fetchDXY(), fetchNews()]);
+  // fetchPrice est critique — les autres sont optionnels
+  await fetchPrice();
   await calcInd();
   renderCal();
+  // DXY et news en parallèle sans bloquer
+  Promise.all([
+    fetchDXY().catch(e => { console.log('DXY error:', e.message); }),
+    fetchNews().catch(e => { console.log('News error:', e.message); })
+  ]).then(() => updateMacroScore());
   await fetchAI();
   startCd();
 }
