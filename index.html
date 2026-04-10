@@ -898,13 +898,19 @@ async function fetchPrice(){
   simPrice();
 }
 
+// Store open price for daily % change
+let openPrice = 0;
+
 function applyPrice(p,src){
-  prevPrice=price||p; price=p;
-  const chg=price-prevPrice;
-  const pct=prevPrice?((chg/prevPrice)*100).toFixed(2):'0.00';
-  updPrice(price,chg,pct);
+  if(!openPrice || openPrice === 0) openPrice = p; // first price = open reference
+  if(price > 0) prevPrice = price;
+  price = p;
+  const chg = price - (prevPrice||price);
+  const dailyChg = price - openPrice;
+  const dailyPct = openPrice > 0 ? ((dailyChg/openPrice)*100).toFixed(2) : '0.00';
+  updPrice(price, dailyChg, dailyPct);
   buildHistory(price);
-  calcPivots(price*1.0065,price*0.989,prevPrice||price*0.9985);
+  calcPivots(price*1.0065,price*0.989,openPrice||price*0.9985);
   document.getElementById('apiDot').className='api-dot ok';
   document.getElementById('apiStatus').textContent=src;
 }
@@ -1491,7 +1497,13 @@ function copyGoliathOrders(){
 
 // ── MAIN ──
 async function fetchAll(){
-  // fetchPrice est critique — les autres sont optionnels
+  // Reset countdown immediately when called
+  if(cdTimer) clearInterval(cdTimer);
+  cd = 30;
+  document.getElementById('countdown').textContent = cd;
+  document.getElementById('refreshFill').style.width = '100%';
+  
+  // fetchPrice est critique
   await fetchPrice();
   await calcInd();
   renderCal();
