@@ -847,7 +847,7 @@ async function fetchPrice(){
     
     // Use proxy to avoid CORS
     const [rXAU, rEUR] = await Promise.all([
-      fetch(`${PROXY}/price`), // XAU/EUR direct depuis proxy existant
+      fetch(`${PROXY}/price?t=${Date.now()}`), // cache-bust
     ]);
     const dXAU = await rXAU.json();
     const p = parseFloat(dXAU?.price);
